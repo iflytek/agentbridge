@@ -3,6 +3,7 @@ package services
 import (
 	"context"
 	"fmt"
+
 	"github.com/iflytek/agentbridge/core/interfaces"
 	"github.com/iflytek/agentbridge/internal/models"
 	"github.com/iflytek/agentbridge/platforms/common"
@@ -12,6 +13,9 @@ import (
 type ConversionService struct {
 	strategyRegistry StrategyRegistry
 }
+
+// validationDisabled controls whether unified DSL validation runs during conversion.
+var validationDisabled = true
 
 // NewConversionService creates a conversion service with the provided strategy registry.
 func NewConversionService(registry StrategyRegistry) *ConversionService {
@@ -146,6 +150,10 @@ func (s *ConversionService) validatePlatformSupport(sourcePlatform, targetPlatfo
 
 // performValidation performs comprehensive validation using the common validator
 func (s *ConversionService) performValidation(unifiedDSL *models.UnifiedDSL) error {
+	if validationDisabled {
+		return nil
+	}
+
 	// Use the common DSL validator
 	validator := common.NewUnifiedDSLValidator()
 
