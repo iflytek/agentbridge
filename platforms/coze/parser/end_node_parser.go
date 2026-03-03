@@ -122,9 +122,9 @@ func (p *EndNodeParser) ValidateNode(cozeNode CozeNode) error {
 		return err
 	}
 
-	// End node specific validation
-	if cozeNode.Type != "2" {
-		return fmt.Errorf("node type must be '2', got '%s'", cozeNode.Type)
+	// End node specific validation - support both numeric and string types
+	if cozeNode.Type != "2" && cozeNode.Type != "end" {
+		return fmt.Errorf("node type must be '2' or 'end', got '%s'", cozeNode.Type)
 	}
 
 	return nil

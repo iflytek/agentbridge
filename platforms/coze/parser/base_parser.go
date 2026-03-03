@@ -35,15 +35,15 @@ func (p *BaseNodeParser) ParseNode(cozeNode CozeNode) (*models.Node, error) {
 
 	// Set corresponding unified DSL type based on node type
 	switch cozeNode.Type {
-	case "1":
+	case "1", "start":
 		node.Type = models.NodeTypeStart
-	case "2":
+	case "2", "end":
 		node.Type = models.NodeTypeEnd
-	case "3":
+	case "3", "llm":
 		node.Type = models.NodeTypeLLM
 	case "4":
 		node.Type = models.NodeTypeCondition
-	case "5":
+	case "5", "code":
 		node.Type = models.NodeTypeCode
 	case "7":
 		node.Type = models.NodeTypeIteration
@@ -78,7 +78,13 @@ func (p *BaseNodeParser) ValidateNode(cozeNode CozeNode) error {
 		return fmt.Errorf("node type cannot be empty")
 	}
 
-	if cozeNode.Data.Meta.Title == "" {
+	// Support both new format (root level title) and old format (Data.Meta.Title)
+	title := cozeNode.Title
+	if title == "" && cozeNode.Data.Meta.Title != "" {
+		title = cozeNode.Data.Meta.Title
+	}
+
+	if title == "" {
 		return fmt.Errorf("node title cannot be empty")
 	}
 
@@ -87,13 +93,33 @@ func (p *BaseNodeParser) ValidateNode(cozeNode CozeNode) error {
 
 // parseBasicNodeInfo parses basic node information.
 func (p *BaseNodeParser) parseBasicNodeInfo(cozeNode CozeNode) *models.Node {
+	// Support both new format (root level) and old format (nested)
+	title := cozeNode.Title
+	if title == "" {
+		title = cozeNode.Data.Meta.Title
+	}
+
+	description := cozeNode.Description
+	if description == "" {
+		description = cozeNode.Data.Meta.Description
+	}
+
+	var posX, posY float64
+	if cozeNode.Position != nil {
+		posX = cozeNode.Position.X
+		posY = cozeNode.Position.Y
+	} else {
+		posX = cozeNode.Meta.Position.X
+		posY = cozeNode.Meta.Position.Y
+	}
+
 	node := &models.Node{
 		ID:          cozeNode.ID,
-		Title:       cozeNode.Data.Meta.Title,
-		Description: cozeNode.Data.Meta.Description,
+		Title:       title,
+		Description: description,
 		Position: models.Position{
-			X: cozeNode.Meta.Position.X,
-			Y: cozeNode.Meta.Position.Y,
+			X: posX,
+			Y: posY,
 		},
 		Size: models.Size{
 			Width:  244, // Default width

@@ -255,6 +255,9 @@ func (p *CozeParser) parseNodes(cozeNodes []CozeNode, unifiedDSL *models.Unified
 	p.preRegisterIterationOutputMappings(cozeNodes)
 
 	for _, cozeNode := range cozeNodes {
+		// Normalize node structure to handle both old and new formats
+		p.normalizeNodeStructure(&cozeNode)
+
 		// Enhance iteration nodes with complete data from schema
 		if cozeNode.Type == "21" {
 			p.enhanceIterationNodeWithCompleteData(&cozeNode, p.cozeDSL)
@@ -1483,4 +1486,135 @@ func (p *CozeParser) buildDependencies(nodes []CozeNode) []CozeDep {
 	}
 
 	return dependencies
+}
+
+// normalizeNodeStructure converts new format nodes to old format for consistent parsing
+func (p *CozeParser) normalizeNodeStructure(node *CozeNode) {
+	// If node uses new format (root level title/description/position), convert to old format
+	if node.Title != "" && node.Data.Meta.Title == "" {
+		// Populate Data.Meta from root level fields
+		node.Data.Meta.Title = node.Title
+		node.Data.Meta.Description = node.Description
+		node.Data.Meta.Icon = node.Icon
+	}
+
+	if node.Position != nil && node.Meta.Position.X == 0 && node.Meta.Position.Y == 0 {
+		// Populate Meta.Position from root level position
+		node.Meta.Position = *node.Position
+	}
+
+	// Convert parameters to Data.Outputs and Data.Inputs if needed
+	if node.Parameters != nil {
+		if paramsMap, ok := node.Parameters.(map[string]interface{}); ok {
+			// Handle llmParam for LLM nodes
+			if llmParam, exists := paramsMap["llmParam"]; exists {
+				if node.Data.Inputs == nil {
+					node.Data.Inputs = &CozeNodeInputs{}
+				}
+				node.Data.Inputs.LLMParam = llmParam
+			}
+
+			// Handle fcParamVar for LLM nodes
+			if _, exists := paramsMap["fcParamVar"]; exists {
+				// fcParamVar contains function calling parameters
+				// For now, we'll skip it as it's not critical for basic conversion
+			}
+
+			// Handle code and language for code nodes
+			if code, exists := paramsMap["code"]; exists {
+				if node.Data.Inputs == nil {
+					node.Data.Inputs = &CozeNodeInputs{}
+				}
+				// Store code in CodeRunner structure
+				codeRunner := make(map[string]interface{})
+				codeRunner["code"] = code
+
+				if language, langExists := paramsMap["language"]; langExists {
+					codeRunner["language"] = language
+				}
+
+				node.Data.Inputs.CodeRunner = codeRunner
+			}
+
+			// Handle node_outputs for start nodes
+			if nodeOutputs, exists := paramsMap["node_outputs"]; exists {
+				if outputsMap, ok := nodeOutputs.(map[string]interface{}); ok {
+					for name, outputData := range outputsMap {
+						if outputMap, ok := outputData.(map[string]interface{}); ok {
+							outputType := "string"
+							if t, exists := outputMap["type"]; exists {
+								if typeStr, ok := t.(string); ok {
+									outputType = typeStr
+								}
+							}
+
+							cozeOutput := CozeOutput{
+								Name:     name,
+								Type:     outputType,
+								Required: false,
+							}
+							node.Data.Outputs = append(node.Data.Outputs, cozeOutput)
+						}
+					}
+				}
+			}
+
+			// Handle node_inputs for end nodes and other nodes
+			if nodeInputs, exists := paramsMap["node_inputs"]; exists {
+				if inputsList, ok := nodeInputs.([]interface{}); ok {
+					for _, inputData := range inputsList {
+						if inputMap, ok := inputData.(map[string]interface{}); ok {
+							name := ""
+							if n, exists := inputMap["name"]; exists {
+								if nameStr, ok := n.(string); ok {
+									name = nameStr
+								}
+							}
+
+							var inputParam CozeNodeInputParam
+							inputParam.Name = name
+
+							if input, exists := inputMap["input"]; exists {
+								if inputDetails, ok := input.(map[string]interface{}); ok {
+									inputType := "string"
+									if t, exists := inputDetails["type"]; exists {
+										if typeStr, ok := t.(string); ok {
+											inputType = typeStr
+										}
+									}
+
+									inputParam.Input.Type = inputType
+
+									// Handle value which might contain references
+									if value, exists := inputDetails["value"]; exists {
+										if valueMap, ok := value.(map[string]interface{}); ok {
+											// Check if it's a reference
+											if refNode, exists := valueMap["ref_node"]; exists {
+												if refNodeStr, ok := refNode.(string); ok {
+													inputParam.Input.Value.Type = "ref"
+													inputParam.Input.Value.Content.BlockID = refNodeStr
+
+													// Get the path/name
+													if path, exists := valueMap["path"]; exists {
+														if pathStr, ok := path.(string); ok {
+															inputParam.Input.Value.Content.Name = pathStr
+														}
+													}
+												}
+											}
+										}
+									}
+								}
+							}
+
+							if node.Data.Inputs == nil {
+								node.Data.Inputs = &CozeNodeInputs{}
+							}
+							node.Data.Inputs.InputParameters = append(node.Data.Inputs.InputParameters, inputParam)
+						}
+					}
+				}
+			}
+		}
+	}
 }

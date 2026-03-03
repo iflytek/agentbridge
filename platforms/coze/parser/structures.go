@@ -102,13 +102,23 @@ type CozeVersions struct {
 
 // CozeNode represents a node in the workflow
 type CozeNode struct {
-	ID      string        `yaml:"id" json:"id"`
-	Type    string        `yaml:"type" json:"type"`
-	Meta    CozeNodeMeta  `yaml:"meta" json:"meta"`
-	Data    CozeNodeData  `yaml:"data" json:"data"`
-	Blocks  []interface{} `yaml:"blocks" json:"blocks"`
-	Edges   []interface{} `yaml:"edges" json:"edges"`
-	Version string        `yaml:"version" json:"version"`
+	ID   string `yaml:"id" json:"id"`
+	Type string `yaml:"type" json:"type"`
+
+	// New format fields (root level) - for newer Coze YAML exports
+	Title       string        `yaml:"title,omitempty" json:"title,omitempty"`
+	Description string        `yaml:"description,omitempty" json:"description,omitempty"`
+	Icon        string        `yaml:"icon,omitempty" json:"icon,omitempty"`
+	Position    *CozePosition `yaml:"position,omitempty" json:"position,omitempty"`
+	Parameters  interface{}   `yaml:"parameters,omitempty" json:"parameters,omitempty"`
+
+	// Old format fields (nested) - for older Coze exports
+	Meta CozeNodeMeta `yaml:"meta,omitempty" json:"meta,omitempty"`
+	Data CozeNodeData `yaml:"data,omitempty" json:"data,omitempty"`
+
+	Blocks  []interface{} `yaml:"blocks,omitempty" json:"blocks,omitempty"`
+	Edges   []interface{} `yaml:"edges,omitempty" json:"edges,omitempty"`
+	Version string        `yaml:"version,omitempty" json:"version,omitempty"`
 }
 
 // CozeNodeMeta contains node positioning metadata

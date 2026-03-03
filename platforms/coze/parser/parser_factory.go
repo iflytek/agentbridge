@@ -15,7 +15,7 @@ func NewParserFactory() *ParserFactory {
 		parsers: make(map[string]func(*models.VariableReferenceSystem) NodeParser),
 	}
 
-	// Register basic node parsers
+	// Register basic node parsers (numeric IDs)
 	factory.Register("1", func(vrs *models.VariableReferenceSystem) NodeParser {
 		return NewStartNodeParser(vrs)
 	})
@@ -47,6 +47,20 @@ func NewParserFactory() *ParserFactory {
 	// Register Selector node parser (Phase 4)
 	factory.Register("8", func(vrs *models.VariableReferenceSystem) NodeParser {
 		return NewSelectorNodeParser(vrs)
+	})
+
+	// Register string type names for compatibility with newer Coze exports
+	factory.Register("start", func(vrs *models.VariableReferenceSystem) NodeParser {
+		return NewStartNodeParser(vrs)
+	})
+	factory.Register("end", func(vrs *models.VariableReferenceSystem) NodeParser {
+		return NewEndNodeParser(vrs)
+	})
+	factory.Register("llm", func(vrs *models.VariableReferenceSystem) NodeParser {
+		return NewLLMNodeParser(vrs)
+	})
+	factory.Register("code", func(vrs *models.VariableReferenceSystem) NodeParser {
+		return NewCodeNodeParser(vrs)
 	})
 
 	return factory

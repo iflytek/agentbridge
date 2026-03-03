@@ -70,7 +70,7 @@ func (s *ConversionService) ConvertWithContext(
 	if err != nil {
 		return nil, &models.ParseError{
 			Code:    "PARSE_FAILED",
-			Message: "Failed to parse source DSL",
+			Message: fmt.Sprintf("Failed to parse source DSL: %v", err),
 			Suggestions: []string{
 				"Check DSL format and syntax",
 				"Verify all required fields are present",
